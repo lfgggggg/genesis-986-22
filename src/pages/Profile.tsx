@@ -1,0 +1,339 @@
+import { useState } from "react";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  User, 
+  Mail, 
+  Phone, 
+  MapPin, 
+  Calendar, 
+  Shield, 
+  Star,
+  Settings,
+  Bell,
+  Lock,
+  CreditCard,
+  Activity
+} from "lucide-react";
+
+const Profile = () => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [profileData, setProfileData] = useState({
+    firstName: "John",
+    lastName: "Doe",
+    email: "john.doe@example.com",
+    phone: "+1 (555) 123-4567",
+    location: "New York, USA",
+    bio: "Social media account trader and digital marketing enthusiast."
+  });
+
+  // Mock user stats
+  const userStats = {
+    accountsBought: 12,
+    accountsSold: 8,
+    totalSpent: 5400,
+    totalEarned: 3200,
+    rating: 4.8,
+    reviewCount: 25,
+    joinDate: "January 2024"
+  };
+
+  const handleSave = () => {
+    setIsEditing(false);
+    // Handle save logic here
+    console.log("Profile updated:", profileData);
+  };
+
+  return (
+    <div className="min-h-screen bg-background pt-20">
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold mb-4">
+            My <span className="bg-gradient-primary bg-clip-text text-transparent">Profile</span>
+          </h1>
+          <p className="text-muted-foreground text-lg">
+            Manage your account settings and trading profile
+          </p>
+        </div>
+
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Profile Card */}
+          <div className="lg:col-span-1">
+            <Card className="p-6 glass-card">
+              <div className="text-center mb-6">
+                <Avatar className="w-24 h-24 mx-auto mb-4">
+                  <AvatarImage src="" />
+                  <AvatarFallback className="text-2xl bg-gradient-primary text-primary-foreground">
+                    {profileData.firstName[0]}{profileData.lastName[0]}
+                  </AvatarFallback>
+                </Avatar>
+                <h2 className="text-2xl font-bold mb-2">
+                  {profileData.firstName} {profileData.lastName}
+                </h2>
+                <div className="flex items-center justify-center space-x-2 mb-4">
+                  <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                  <span className="font-semibold">{userStats.rating}</span>
+                  <span className="text-muted-foreground">
+                    ({userStats.reviewCount} reviews)
+                  </span>
+                </div>
+                <Badge variant="secondary" className="bg-success/10 text-success border-success/20">
+                  Verified Trader
+                </Badge>
+              </div>
+
+              {/* Quick Stats */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-primary">{userStats.accountsBought}</div>
+                    <div className="text-sm text-muted-foreground">Purchased</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-success">{userStats.accountsSold}</div>
+                    <div className="text-sm text-muted-foreground">Sold</div>
+                  </div>
+                </div>
+                
+                <div className="pt-4 border-t border-border/30">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-muted-foreground">Total Spent</span>
+                    <span className="font-semibold">{userStats.totalSpent.toLocaleString()} UC</span>
+                  </div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-muted-foreground">Total Earned</span>
+                    <span className="font-semibold text-success">{userStats.totalEarned.toLocaleString()} UC</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Member Since</span>
+                    <span className="font-semibold">{userStats.joinDate}</span>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {/* Profile Settings */}
+          <div className="lg:col-span-2">
+            <Tabs defaultValue="personal" className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="personal">Personal</TabsTrigger>
+                <TabsTrigger value="security">Security</TabsTrigger>
+                <TabsTrigger value="notifications">Notifications</TabsTrigger>
+                <TabsTrigger value="activity">Activity</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="personal">
+                <Card className="p-6 glass-card">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-lg font-semibold">Personal Information</h3>
+                    <Button
+                      variant={isEditing ? "success" : "outline"}
+                      onClick={isEditing ? handleSave : () => setIsEditing(true)}
+                    >
+                      {isEditing ? "Save Changes" : "Edit Profile"}
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName">First Name</Label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                        <Input
+                          id="firstName"
+                          value={profileData.firstName}
+                          onChange={(e) => setProfileData(prev => ({ ...prev, firstName: e.target.value }))}
+                          disabled={!isEditing}
+                          className="pl-10"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName">Last Name</Label>
+                      <Input
+                        id="lastName"
+                        value={profileData.lastName}
+                        onChange={(e) => setProfileData(prev => ({ ...prev, lastName: e.target.value }))}
+                        disabled={!isEditing}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email Address</Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                        <Input
+                          id="email"
+                          value={profileData.email}
+                          onChange={(e) => setProfileData(prev => ({ ...prev, email: e.target.value }))}
+                          disabled={!isEditing}
+                          className="pl-10"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Phone Number</Label>
+                      <div className="relative">
+                        <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                        <Input
+                          id="phone"
+                          value={profileData.phone}
+                          onChange={(e) => setProfileData(prev => ({ ...prev, phone: e.target.value }))}
+                          disabled={!isEditing}
+                          className="pl-10"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="location">Location</Label>
+                      <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                        <Input
+                          id="location"
+                          value={profileData.location}
+                          onChange={(e) => setProfileData(prev => ({ ...prev, location: e.target.value }))}
+                          disabled={!isEditing}
+                          className="pl-10"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="bio">Bio</Label>
+                      <textarea
+                        id="bio"
+                        value={profileData.bio}
+                        onChange={(e) => setProfileData(prev => ({ ...prev, bio: e.target.value }))}
+                        disabled={!isEditing}
+                        className="w-full px-3 py-2 rounded-lg border border-border bg-surface-elevated disabled:opacity-60 disabled:cursor-not-allowed"
+                        rows={4}
+                      />
+                    </div>
+                  </div>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="security">
+                <Card className="p-6 glass-card">
+                  <h3 className="text-lg font-semibold mb-6 flex items-center">
+                    <Shield className="w-5 h-5 mr-2 text-primary" />
+                    Security Settings
+                  </h3>
+                  
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between p-4 bg-surface-elevated/50 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <Lock className="w-5 h-5 text-primary" />
+                        <div>
+                          <h4 className="font-medium">Password</h4>
+                          <p className="text-sm text-muted-foreground">Last updated 30 days ago</p>
+                        </div>
+                      </div>
+                      <Button variant="outline">Change Password</Button>
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-surface-elevated/50 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <Phone className="w-5 h-5 text-success" />
+                        <div>
+                          <h4 className="font-medium">Two-Factor Authentication</h4>
+                          <p className="text-sm text-muted-foreground">Add an extra layer of security</p>
+                        </div>
+                      </div>
+                      <Button variant="hero">Enable 2FA</Button>
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-surface-elevated/50 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <CreditCard className="w-5 h-5 text-warning" />
+                        <div>
+                          <h4 className="font-medium">Payment Methods</h4>
+                          <p className="text-sm text-muted-foreground">Manage your payment methods</p>
+                        </div>
+                      </div>
+                      <Button variant="outline">Manage</Button>
+                    </div>
+                  </div>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="notifications">
+                <Card className="p-6 glass-card">
+                  <h3 className="text-lg font-semibold mb-6 flex items-center">
+                    <Bell className="w-5 h-5 mr-2 text-primary" />
+                    Notification Preferences
+                  </h3>
+                  
+                  <div className="space-y-4">
+                    {[
+                      { title: "Transaction Updates", description: "Get notified about UC transactions" },
+                      { title: "Account Listings", description: "New accounts matching your interests" },
+                      { title: "Price Alerts", description: "When accounts in your watchlist change price" },
+                      { title: "Security Alerts", description: "Login attempts and security changes" },
+                      { title: "Marketing Updates", description: "Product updates and promotional offers" }
+                    ].map((item, index) => (
+                      <div key={index} className="flex items-center justify-between p-4 bg-surface-elevated/50 rounded-lg">
+                        <div>
+                          <h4 className="font-medium">{item.title}</h4>
+                          <p className="text-sm text-muted-foreground">{item.description}</p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input type="checkbox" className="sr-only peer" defaultChecked={index < 3} />
+                          <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="activity">
+                <Card className="p-6 glass-card">
+                  <h3 className="text-lg font-semibold mb-6 flex items-center">
+                    <Activity className="w-5 h-5 mr-2 text-primary" />
+                    Recent Activity
+                  </h3>
+                  
+                  <div className="space-y-4">
+                    {[
+                      { action: "Purchased Instagram account @lifestyle_blogger", time: "2 hours ago", type: "purchase" },
+                      { action: "Deposited 1,000 UC via Paystack", time: "1 day ago", type: "deposit" },
+                      { action: "Updated profile information", time: "3 days ago", type: "profile" },
+                      { action: "Sold Twitter account @tech_insider", time: "1 week ago", type: "sale" },
+                      { action: "Enabled email notifications", time: "2 weeks ago", type: "settings" }
+                    ].map((activity, index) => (
+                      <div key={index} className="flex items-center space-x-4 p-4 bg-surface-elevated/30 rounded-lg">
+                        <div className={`w-2 h-2 rounded-full ${
+                          activity.type === 'purchase' ? 'bg-destructive' :
+                          activity.type === 'deposit' ? 'bg-success' :
+                          activity.type === 'sale' ? 'bg-success' :
+                          'bg-primary'
+                        }`} />
+                        <div className="flex-1">
+                          <p className="font-medium">{activity.action}</p>
+                          <p className="text-sm text-muted-foreground">{activity.time}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Profile;
