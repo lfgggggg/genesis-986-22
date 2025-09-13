@@ -16,6 +16,13 @@ import AdminDashboard from "./pages/AdminDashboard";
 import ForgotPassword from "./pages/ForgotPassword";
 import Privacy from "./pages/Privacy";
 import NotFound from "./pages/NotFound";
+import Support from "./pages/Support";
+import ContactUs from "./pages/ContactUs";
+import HelpCenter from "./pages/HelpCenter";
+import FAQ from "./pages/FAQ";
+import TermsOfService from "./pages/TermsOfService";
+import CookiePolicy from "./pages/CookiePolicy";
+import Messages from "./pages/Messages";
 
 const queryClient = new QueryClient();
 
@@ -36,7 +43,14 @@ const App = () => (
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/wallet" element={<Wallet />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/messages" element={<Messages />} />
               <Route path="/privacy" element={<Privacy />} />
+              <Route path="/support" element={<Support />} />
+              <Route path="/contact" element={<ContactUs />} />
+              <Route path="/help" element={<HelpCenter />} />
+              <Route path="/faq" element={<FAQ />} />
+              <Route path="/terms" element={<TermsOfService />} />
+              <Route path="/cookies" element={<CookiePolicy />} />
               <Route path="/admin" element={
                 <AdminRoute>
                   <AdminDashboard />
