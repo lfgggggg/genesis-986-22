@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/hooks/use-toast";
 import { 
   Wallet as WalletIcon, 
   Plus, 
@@ -18,50 +21,71 @@ import {
   CreditCard
 } from "lucide-react";
 
-// Mock data for transactions
-const mockTransactions = [
-  {
-    id: 1,
-    type: "purchase",
-    description: "Instagram Account - @lifestyle_blogger",
-    amount: -850,
-    status: "completed",
-    date: "2024-01-15T10:30:00Z"
-  },
-  {
-    id: 2,
-    type: "deposit",
-    description: "UC Deposit via Paystack",
-    amount: 1000,
-    status: "completed",
-    date: "2024-01-14T14:20:00Z"
-  },
-  {
-    id: 3,
-    type: "transfer",
-    description: "Transfer to @john_trader",
-    amount: -200,
-    status: "pending",
-    date: "2024-01-13T09:15:00Z"
-  },
-  {
-    id: 4,
-    type: "sale",
-    description: "Sold Twitter Account - @tech_insider",
-    amount: 650,
-    status: "completed",
-    date: "2024-01-12T16:45:00Z"
-  }
-];
+interface Transaction {
+  id: string;
+  type: string;
+  description: string;
+  amount: number;
+  status: string;
+  created_at: string;
+}
 
 const Wallet = () => {
+  const { user } = useAuth();
   const [depositAmount, setDepositAmount] = useState("");
   const [transferAmount, setTransferAmount] = useState("");
   const [transferTo, setTransferTo] = useState("");
+  const [balance, setBalance] = useState(0);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock balance
-  const balance = 2450;
-  const pendingBalance = 200;
+  useEffect(() => {
+    if (user) {
+      fetchWalletData();
+      fetchTransactions();
+    }
+  }, [user]);
+
+  const fetchWalletData = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('user_wallets')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error) throw error;
+      setBalance(data?.balance || 0);
+    } catch (error) {
+      console.error('Error fetching wallet:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchTransactions = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      setTransactions(data || []);
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+    }
+  };
+
+  const pendingBalance = transactions
+    .filter(t => t.status === 'pending')
+    .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -71,6 +95,14 @@ const Wallet = () => {
       minute: '2-digit'
     });
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background pt-20 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   const getTransactionIcon = (type: string) => {
     switch (type) {
@@ -174,7 +206,7 @@ const Wallet = () => {
                     <h3 className="text-lg font-semibold">Recent Transactions</h3>
                   </div>
                   <div className="divide-y divide-border/30">
-                    {mockTransactions.map((transaction) => (
+                    {transactions.map((transaction) => (
                       <div key={transaction.id} className="p-6 flex items-center justify-between">
                         <div className="flex items-center space-x-4">
                           <div className="w-10 h-10 bg-surface-elevated rounded-lg flex items-center justify-center">
@@ -183,7 +215,7 @@ const Wallet = () => {
                           <div>
                             <p className="font-medium">{transaction.description}</p>
                             <p className="text-sm text-muted-foreground">
-                              {formatDate(transaction.date)}
+                              {formatDate(transaction.created_at)}
                             </p>
                           </div>
                         </div>

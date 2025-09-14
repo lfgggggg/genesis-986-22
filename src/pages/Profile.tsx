@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/hooks/use-toast";
 import { 
   User, 
   Mail, 
@@ -22,32 +25,139 @@ import {
 } from "lucide-react";
 
 const Profile = () => {
+  const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [profileData, setProfileData] = useState({
-    firstName: "John",
-    lastName: "Doe",
-    email: "john.doe@example.com",
-    phone: "+1 (555) 123-4567",
-    location: "New York, USA",
-    bio: "Social media account trader and digital marketing enthusiast."
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    location: "",
+    bio: ""
+  });
+  const [userStats, setUserStats] = useState({
+    accountsBought: 0,
+    accountsSold: 0,
+    totalSpent: 0,
+    totalEarned: 0,
+    rating: 0,
+    reviewCount: 0,
+    joinDate: ""
   });
 
-  // Mock user stats
-  const userStats = {
-    accountsBought: 12,
-    accountsSold: 8,
-    totalSpent: 5400,
-    totalEarned: 3200,
-    rating: 4.8,
-    reviewCount: 25,
-    joinDate: "January 2024"
+  useEffect(() => {
+    if (user) {
+      fetchUserProfile();
+      fetchUserStats();
+    }
+  }, [user]);
+
+  const fetchUserProfile = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user?.id)
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        setProfileData({
+          firstName: data.first_name || "",
+          lastName: data.last_name || "",
+          email: data.email || user?.email || "",
+          phone: data.phone || "",
+          location: data.location || "",
+          bio: data.bio || ""
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSave = () => {
-    setIsEditing(false);
-    // Handle save logic here
-    console.log("Profile updated:", profileData);
+  const fetchUserStats = async () => {
+    if (!user) return;
+    
+    try {
+      // Get user transactions for stats
+      const { data: transactions, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      // Calculate stats from transactions
+      const purchases = transactions?.filter(t => t.type === 'purchase') || [];
+      const sales = transactions?.filter(t => t.type === 'sale') || [];
+      const deposits = transactions?.filter(t => t.type === 'deposit') || [];
+
+      const totalSpent = purchases.reduce((sum, t) => sum + Math.abs(t.amount), 0);
+      const totalEarned = sales.reduce((sum, t) => sum + t.amount, 0);
+
+      setUserStats({
+        accountsBought: purchases.length,
+        accountsSold: sales.length,
+        totalSpent,
+        totalEarned,
+        rating: 4.8, // Default rating
+        reviewCount: 0, // TODO: Implement reviews
+        joinDate: new Date(user.created_at || '').toLocaleDateString('en-US', { 
+          month: 'long', 
+          year: 'numeric' 
+        })
+      });
+    } catch (error) {
+      console.error('Error fetching user stats:', error);
+    }
   };
+
+  const handleSave = async () => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase
+        .from('users')
+        .upsert({
+          id: user.id,
+          email: profileData.email,
+          first_name: profileData.firstName,
+          last_name: profileData.lastName,
+          phone: profileData.phone,
+          location: profileData.location,
+          bio: profileData.bio,
+          updated_at: new Date().toISOString()
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Profile updated successfully!",
+      });
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update profile",
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background pt-20 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background pt-20">

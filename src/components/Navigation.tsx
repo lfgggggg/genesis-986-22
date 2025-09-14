@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { Menu, X, Home, Store, Wallet, User, LogIn, UserPlus, LogOut, Shield } from 'lucide-react';
+import { Menu, X, Home, Store, Wallet, User, LogIn, UserPlus, LogOut, Shield, MessageSquare } from 'lucide-react';
 
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false);
@@ -13,6 +13,7 @@ export default function Navigation() {
     { name: 'Home', href: '/', icon: Home },
     { name: 'Marketplace', href: '/marketplace', icon: Store },
     { name: 'Wallet', href: '/wallet', icon: Wallet },
+    { name: 'Messages', href: '/messages', icon: MessageSquare },
     { name: 'Profile', href: '/profile', icon: User },
   ];
 
