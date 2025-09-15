@@ -151,23 +151,38 @@ export type Database = {
       }
       users: {
         Row: {
+          bio: string | null
           created_at: string
           email: string
+          first_name: string | null
           id: string
+          last_name: string | null
+          location: string | null
+          phone: string | null
           role: string
           updated_at: string
         }
         Insert: {
+          bio?: string | null
           created_at?: string
           email: string
+          first_name?: string | null
           id: string
+          last_name?: string | null
+          location?: string | null
+          phone?: string | null
           role?: string
           updated_at?: string
         }
         Update: {
+          bio?: string | null
           created_at?: string
           email?: string
+          first_name?: string | null
           id?: string
+          last_name?: string | null
+          location?: string | null
+          phone?: string | null
           role?: string
           updated_at?: string
         }

@@ -61,16 +61,28 @@ const Profile = () => {
         .eq('id', user?.id)
         .single();
 
-      if (error) throw error;
+      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+        throw error;
+      }
 
       if (data) {
         setProfileData({
-          firstName: data.first_name || "",
-          lastName: data.last_name || "",
+          firstName: (data as any).first_name || "",
+          lastName: (data as any).last_name || "",
           email: data.email || user?.email || "",
-          phone: data.phone || "",
-          location: data.location || "",
-          bio: data.bio || ""
+          phone: (data as any).phone || "",
+          location: (data as any).location || "",
+          bio: (data as any).bio || ""
+        });
+      } else {
+        // If no profile exists, use default values
+        setProfileData({
+          firstName: "",
+          lastName: "",
+          email: user?.email || "",
+          phone: "",
+          location: "",
+          bio: ""
         });
       }
     } catch (error) {
