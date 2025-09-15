@@ -39,15 +39,35 @@ export const AdminChart: React.FC<AdminChartProps> = ({ accounts }) => {
     { name: 'Pending', value: accounts.filter(acc => acc.status === 'pending').length, color: '#f59e0b' },
   ].filter(item => item.value > 0);
 
-  // Monthly additions (mock data - in real app would come from created_at dates)
-  const monthlyData = [
-    { month: 'Jan', accounts: 12 },
-    { month: 'Feb', accounts: 19 },
-    { month: 'Mar', accounts: 15 },
-    { month: 'Apr', accounts: 28 },
-    { month: 'May', accounts: 22 },
-    { month: 'Jun', accounts: 35 },
-  ];
+  // Monthly additions based on real created_at dates
+  const getMonthlyData = () => {
+    const monthCounts: Record<string, number> = {};
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    // Initialize last 6 months with 0 counts
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthKey = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+      monthCounts[monthKey] = 0;
+    }
+    
+    // Count accounts by month
+    accounts.forEach(account => {
+      const createdDate = new Date(account.created_at);
+      const monthKey = `${monthNames[createdDate.getMonth()]} ${createdDate.getFullYear()}`;
+      if (monthCounts.hasOwnProperty(monthKey)) {
+        monthCounts[monthKey]++;
+      }
+    });
+    
+    return Object.entries(monthCounts).map(([month, count]) => ({
+      month: month.split(' ')[0], // Just the month name for display
+      accounts: count,
+    }));
+  };
+  
+  const monthlyData = getMonthlyData();
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
