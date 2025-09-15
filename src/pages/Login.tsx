@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,12 +17,14 @@ export default function Login() {
   
   const { signIn, user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     if (user) {
-      navigate('/');
+      const from = location.state?.from?.pathname || '/marketplace';
+      navigate(from, { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, navigate, location]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,7 +32,8 @@ export default function Login() {
     
     const success = await signIn(formData.email, formData.password);
     if (success) {
-      navigate('/');
+      const from = location.state?.from?.pathname || '/marketplace';
+      navigate(from, { replace: true });
     }
     
     setLoading(false);
