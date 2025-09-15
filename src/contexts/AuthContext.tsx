@@ -111,17 +111,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUp = async (email: string, password: string): Promise<boolean> => {
     try {
+      // First check if email already exists
+      const { data: existingUser, error: checkError } = await supabase
+        .from('users')
+        .select('email')
+        .eq('email', email)
+        .single();
+
+      if (existingUser) {
+        toast({
+          title: "Error",
+          description: "An account with this email already exists. Please use a different email or try logging in.",
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      // If no existing user found (which is expected), proceed with signup
+      const redirectUrl = `${window.location.origin}/`;
+      
       const { error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          emailRedirectTo: redirectUrl
+        }
       });
 
       if (error) {
-        toast({
-          title: "Error",
-          description: error.message,
-          variant: "destructive",
-        });
+        // Handle specific Supabase errors
+        if (error.message.includes('User already registered')) {
+          toast({
+            title: "Error",
+            description: "An account with this email already exists. Please try logging in instead.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
         return false;
       }
 
@@ -131,9 +162,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       return true;
     } catch (error) {
+      console.error('Signup error:', error);
       toast({
         title: "Error",
-        description: "An unexpected error occurred",
+        description: "An unexpected error occurred during signup. Please try again.",
         variant: "destructive",
       });
       return false;
