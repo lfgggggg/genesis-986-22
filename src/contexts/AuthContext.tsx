@@ -111,23 +111,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUp = async (email: string, password: string): Promise<boolean> => {
     try {
-      // First check if email already exists
-      const { data: existingUser, error: checkError } = await supabase
-        .from('users')
-        .select('email')
-        .eq('email', email)
-        .single();
-
-      if (existingUser) {
-        toast({
-          title: "Error",
-          description: "An account with this email already exists. Please use a different email or try logging in.",
-          variant: "destructive",
-        });
-        return false;
-      }
-
-      // If no existing user found (which is expected), proceed with signup
       const redirectUrl = `${window.location.origin}/`;
       
       const { error } = await supabase.auth.signUp({
@@ -140,7 +123,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) {
         // Handle specific Supabase errors
-        if (error.message.includes('User already registered')) {
+        if (error.message.includes('User already registered') || error.message.includes('already registered')) {
           toast({
             title: "Error",
             description: "An account with this email already exists. Please try logging in instead.",
