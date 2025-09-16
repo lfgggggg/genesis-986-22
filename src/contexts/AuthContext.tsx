@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
 interface AuthContextType {
@@ -58,6 +58,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
+      console.log('Checking admin role for user:', user.email);
       // Check if user has admin role in the users table
       const { data, error } = await supabase
         .from('users')
@@ -71,7 +72,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
-      setIsAdmin(data?.role === 'admin');
+      console.log('User role from database:', data?.role);
+      const isUserAdmin = data?.role === 'admin';
+      console.log('Setting isAdmin to:', isUserAdmin);
+      setIsAdmin(isUserAdmin);
     } catch (error) {
       console.error('Error checking admin role:', error);
       setIsAdmin(false);
