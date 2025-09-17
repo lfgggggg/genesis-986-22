@@ -11,20 +11,43 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AdminStats } from '@/components/admin/AdminStats';
 import { AdminChart } from '@/components/admin/AdminChart';
 import { AdminAccountsList } from '@/components/admin/AdminAccountsList';
-import { supabase, MarketplaceAccount } from '@/lib/supabase';
+import { CredentialsManager } from '@/components/admin/CredentialsManager';
+import { TransactionManager } from '@/components/admin/TransactionManager';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { Plus, TrendingUp, Users, DollarSign, ShoppingCart, Activity, Crown, Settings, Zap, Eye, Filter, Download, RefreshCw } from 'lucide-react';
+import { Plus, TrendingUp, Users, DollarSign, ShoppingCart, Activity, Crown, Settings, Zap, Eye, Filter, Download, RefreshCw, Key, Trash2 } from 'lucide-react';
+
+interface MarketplaceAccount {
+  id: string;
+  platform: string;
+  username: string;
+  followers: number;
+  engagement_rate: number;
+  price: number;
+  description: string;
+  category: string;
+  status: 'active' | 'sold' | 'pending';
+  images: string[];
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+}
 
 export default function AdminDashboard() {
   const [accounts, setAccounts] = useState<MarketplaceAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [selectedAccountForCredentials, setSelectedAccountForCredentials] = useState<MarketplaceAccount | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [realTimeStats, setRealTimeStats] = useState({
-    activeUsers: 0,
-    todayRevenue: 0,
-    pendingOrders: 0,
-    conversionRate: 0,
+    total_accounts: 0,
+    active_accounts: 0,
+    sold_accounts: 0,
+    pending_accounts: 0,
+    total_users: 0,
+    pending_transactions: 0,
+    today_revenue: 0,
+    total_revenue: 0,
   });
   const [newAccount, setNewAccount] = useState({
     platform: '',
@@ -36,6 +59,9 @@ export default function AdminDashboard() {
     category: '',
     images: [] as string[],
   });
+  const [credentials, setCredentials] = useState<Array<{ name: string; value: string }>>([
+    { name: 'Username/Email', value: '' }
+  ]);
 
   useEffect(() => {
     fetchAccounts();
@@ -58,7 +84,7 @@ export default function AdminDashboard() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setAccounts(data || []);
+      setAccounts((data || []) as MarketplaceAccount[]);
     } catch (error) {
       console.error('Error fetching accounts:', error);
       toast({
@@ -74,16 +100,44 @@ export default function AdminDashboard() {
 
   const fetchRealTimeStats = async () => {
     try {
-      // Simulate real-time stats (in production, these would come from actual queries)
-      setRealTimeStats({
-        activeUsers: Math.floor(Math.random() * 50) + 20,
-        todayRevenue: Math.floor(Math.random() * 5000) + 1000,
-        pendingOrders: Math.floor(Math.random() * 15) + 3,
-        conversionRate: parseFloat((Math.random() * 10 + 85).toFixed(1)),
+      const { data, error } = await supabase.rpc('get_admin_stats');
+      
+      if (error) {
+        console.error('Error fetching admin stats:', error);
+        return;
+      }
+      
+      setRealTimeStats((data as any) || {
+        total_accounts: 0,
+        active_accounts: 0,
+        sold_accounts: 0,
+        pending_accounts: 0,
+        total_users: 0,
+        pending_transactions: 0,
+        today_revenue: 0,
+        total_revenue: 0,
       });
     } catch (error) {
       console.error('Error fetching real-time stats:', error);
     }
+  };
+
+  const addCredentialField = () => {
+    if (credentials.length < 30) {
+      setCredentials([...credentials, { name: '', value: '' }]);
+    }
+  };
+
+  const removeCredentialField = (index: number) => {
+    if (credentials.length > 1) {
+      setCredentials(credentials.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateCredential = (index: number, field: 'name' | 'value', value: string) => {
+    const updated = [...credentials];
+    updated[index][field] = value;
+    setCredentials(updated);
   };
 
   const handleAddAccount = async () => {
@@ -91,15 +145,38 @@ export default function AdminDashboard() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { error } = await supabase
+      // First, create the account
+      const { data: accountData, error: accountError } = await supabase
         .from('marketplace_accounts')
         .insert([{
           ...newAccount,
           status: 'active',
           created_by: user.id,
-        }]);
+        }])
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (accountError) throw accountError;
+
+      // Then, add credentials if any are provided
+      const validCredentials = credentials.filter(cred => cred.name.trim() && cred.value.trim());
+      if (validCredentials.length > 0) {
+        const credentialInserts = validCredentials.map((cred, index) => ({
+          account_id: accountData.id,
+          field_name: cred.name,
+          field_value: cred.value,
+          field_order: index
+        }));
+
+        const { error: credError } = await supabase
+          .from('account_credentials')
+          .insert(credentialInserts);
+
+        if (credError) {
+          console.error('Error adding credentials:', credError);
+          // Don't fail the whole operation if credentials fail
+        }
+      }
 
       toast({
         title: "Success",
@@ -117,7 +194,9 @@ export default function AdminDashboard() {
         category: '',
         images: [],
       });
+      setCredentials([{ name: 'Username/Email', value: '' }]);
       fetchAccounts();
+      fetchRealTimeStats();
     } catch (error) {
       console.error('Error adding account:', error);
       toast({
@@ -210,88 +289,151 @@ export default function AdminDashboard() {
                   Add Premium Account
                 </Button>
               </DialogTrigger>
-            <DialogContent className="glass-card">
+            <DialogContent className="glass-card max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Add New Account</DialogTitle>
+                <DialogTitle>Add New Account with Credentials</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="platform">Platform</Label>
-                    <Select onValueChange={(value) => setNewAccount(prev => ({ ...prev, platform: value }))}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select platform" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Instagram">Instagram</SelectItem>
-                        <SelectItem value="TikTok">TikTok</SelectItem>
-                        <SelectItem value="YouTube">YouTube</SelectItem>
-                        <SelectItem value="Twitter">Twitter</SelectItem>
-                        <SelectItem value="Facebook">Facebook</SelectItem>
-                      </SelectContent>
-                    </Select>
+              <div className="space-y-6">
+                {/* Basic Account Info */}
+                <div className="space-y-4">
+                  <h4 className="text-lg font-semibold">Account Information</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="platform">Platform</Label>
+                      <Select onValueChange={(value) => setNewAccount(prev => ({ ...prev, platform: value }))}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select platform" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Instagram">Instagram</SelectItem>
+                          <SelectItem value="TikTok">TikTok</SelectItem>
+                          <SelectItem value="YouTube">YouTube</SelectItem>
+                          <SelectItem value="Twitter">Twitter</SelectItem>
+                          <SelectItem value="Facebook">Facebook</SelectItem>
+                          <SelectItem value="LinkedIn">LinkedIn</SelectItem>
+                          <SelectItem value="Snapchat">Snapchat</SelectItem>
+                          <SelectItem value="Pinterest">Pinterest</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="username">Username</Label>
+                      <Input
+                        id="username"
+                        value={newAccount.username}
+                        onChange={(e) => setNewAccount(prev => ({ ...prev, username: e.target.value }))}
+                        placeholder="@username"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="followers">Followers</Label>
+                      <Input
+                        id="followers"
+                        type="number"
+                        value={newAccount.followers}
+                        onChange={(e) => setNewAccount(prev => ({ ...prev, followers: parseInt(e.target.value) || 0 }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="engagement">Engagement Rate (%)</Label>
+                      <Input
+                        id="engagement"
+                        type="number"
+                        step="0.1"
+                        value={newAccount.engagement_rate}
+                        onChange={(e) => setNewAccount(prev => ({ ...prev, engagement_rate: parseFloat(e.target.value) || 0 }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="price">Price (UC)</Label>
+                      <Input
+                        id="price"
+                        type="number"
+                        value={newAccount.price}
+                        onChange={(e) => setNewAccount(prev => ({ ...prev, price: parseInt(e.target.value) || 0 }))}
+                      />
+                    </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="username">Username</Label>
+                    <Label htmlFor="category">Category</Label>
                     <Input
-                      id="username"
-                      value={newAccount.username}
-                      onChange={(e) => setNewAccount(prev => ({ ...prev, username: e.target.value }))}
-                      placeholder="@username"
+                      id="category"
+                      value={newAccount.category}
+                      onChange={(e) => setNewAccount(prev => ({ ...prev, category: e.target.value }))}
+                      placeholder="e.g., Fashion, Tech, Gaming"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Description</Label>
+                    <Textarea
+                      id="description"
+                      value={newAccount.description}
+                      onChange={(e) => setNewAccount(prev => ({ ...prev, description: e.target.value }))}
+                      placeholder="Account description..."
+                      className="min-h-[100px]"
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="followers">Followers</Label>
-                    <Input
-                      id="followers"
-                      type="number"
-                      value={newAccount.followers}
-                      onChange={(e) => setNewAccount(prev => ({ ...prev, followers: parseInt(e.target.value) || 0 }))}
-                    />
+
+                {/* Credentials Section */}
+                <div className="space-y-4 border-t pt-6">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-lg font-semibold flex items-center gap-2">
+                      <Key className="w-5 h-5" />
+                      Account Credentials
+                    </h4>
+                    <Badge variant="outline" className="bg-primary/10">
+                      {credentials.length}/30 fields
+                    </Badge>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="engagement">Engagement Rate (%)</Label>
-                    <Input
-                      id="engagement"
-                      type="number"
-                      step="0.1"
-                      value={newAccount.engagement_rate}
-                      onChange={(e) => setNewAccount(prev => ({ ...prev, engagement_rate: parseFloat(e.target.value) || 0 }))}
-                    />
+                  
+                  <div className="space-y-3 max-h-60 overflow-y-auto">
+                    {credentials.map((credential, index) => (
+                      <div key={index} className="flex gap-2 p-3 border rounded-lg bg-card/50">
+                        <div className="flex-1">
+                          <Input
+                            placeholder="Field name (e.g., Username, Password)"
+                            value={credential.name}
+                            onChange={(e) => updateCredential(index, 'name', e.target.value)}
+                            className="mb-2"
+                          />
+                          <Input
+                            type="password"
+                            placeholder="Field value"
+                            value={credential.value}
+                            onChange={(e) => updateCredential(index, 'value', e.target.value)}
+                          />
+                        </div>
+                        {credentials.length > 1 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeCredentialField(index)}
+                            className="text-destructive hover:text-destructive self-start mt-1"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="price">Price (UC)</Label>
-                    <Input
-                      id="price"
-                      type="number"
-                      value={newAccount.price}
-                      onChange={(e) => setNewAccount(prev => ({ ...prev, price: parseInt(e.target.value) || 0 }))}
-                    />
-                  </div>
+                  
+                  {credentials.length < 30 && (
+                    <Button
+                      variant="outline"
+                      onClick={addCredentialField}
+                      className="w-full"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Credential Field ({credentials.length}/30)
+                    </Button>
+                  )}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="category">Category</Label>
-                  <Input
-                    id="category"
-                    value={newAccount.category}
-                    onChange={(e) => setNewAccount(prev => ({ ...prev, category: e.target.value }))}
-                    placeholder="e.g., Fashion, Tech, Gaming"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    value={newAccount.description}
-                    onChange={(e) => setNewAccount(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="Account description..."
-                    className="min-h-[100px]"
-                  />
-                </div>
+
                 <Button onClick={handleAddAccount} className="w-full gradient-primary">
-                  Add Account
+                  Add Account with Credentials
                 </Button>
               </div>
             </DialogContent>
@@ -301,14 +443,14 @@ export default function AdminDashboard() {
 
         {/* Real-time Overview Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="glass-card hover:shadow-premium transition-all duration-300 border-success/20">
+          <Card className="glass-card hover:shadow-premium transition-all duration-300 border-primary/20">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Live Users</CardTitle>
-              <Activity className="h-4 w-4 text-success animate-pulse" />
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Accounts</CardTitle>
+              <ShoppingCart className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-success">{realTimeStats.activeUsers}</div>
-              <p className="text-xs text-muted-foreground">Online now</p>
+              <div className="text-2xl font-bold text-primary">{realTimeStats.total_accounts}</div>
+              <p className="text-xs text-muted-foreground">{realTimeStats.active_accounts} active</p>
             </CardContent>
           </Card>
           
@@ -318,30 +460,30 @@ export default function AdminDashboard() {
               <DollarSign className="h-4 w-4 text-warning" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-warning">{realTimeStats.todayRevenue.toLocaleString()} UC</div>
-              <p className="text-xs text-muted-foreground">+12% from yesterday</p>
+              <div className="text-2xl font-bold text-warning">{realTimeStats.today_revenue.toLocaleString()} UC</div>
+              <p className="text-xs text-muted-foreground">Total: {realTimeStats.total_revenue.toLocaleString()} UC</p>
             </CardContent>
           </Card>
           
-          <Card className="glass-card hover:shadow-premium transition-all duration-300 border-primary/20">
+          <Card className="glass-card hover:shadow-premium transition-all duration-300 border-success/20">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Pending Orders</CardTitle>
-              <ShoppingCart className="h-4 w-4 text-primary" />
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Users</CardTitle>
+              <Users className="h-4 w-4 text-success" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-primary">{realTimeStats.pendingOrders}</div>
+              <div className="text-2xl font-bold text-success">{realTimeStats.total_users}</div>
+              <p className="text-xs text-muted-foreground">Registered users</p>
+            </CardContent>
+          </Card>
+          
+          <Card className="glass-card hover:shadow-premium transition-all duration-300 border-destructive/20">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Pending Transactions</CardTitle>
+              <Activity className="h-4 w-4 text-destructive" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-destructive">{realTimeStats.pending_transactions}</div>
               <p className="text-xs text-muted-foreground">Awaiting processing</p>
-            </CardContent>
-          </Card>
-          
-          <Card className="glass-card hover:shadow-premium transition-all duration-300 border-secondary-brand/20">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Conversion Rate</CardTitle>
-              <TrendingUp className="h-4 w-4 text-secondary-brand" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-secondary-brand">{realTimeStats.conversionRate}%</div>
-              <p className="text-xs text-muted-foreground">+2.1% this week</p>
             </CardContent>
           </Card>
         </div>
@@ -351,7 +493,7 @@ export default function AdminDashboard() {
 
         {/* Advanced Management Interface */}
         <Tabs defaultValue="analytics" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 bg-muted/50">
+          <TabsList className="grid w-full grid-cols-5 bg-muted/50">
             <TabsTrigger value="analytics" className="flex items-center gap-2">
               <Activity className="w-4 h-4" />
               Analytics
@@ -359,6 +501,10 @@ export default function AdminDashboard() {
             <TabsTrigger value="accounts" className="flex items-center gap-2">
               <Users className="w-4 h-4" />
               Accounts
+            </TabsTrigger>
+            <TabsTrigger value="transactions" className="flex items-center gap-2">
+              <DollarSign className="w-4 h-4" />
+              Transactions
             </TabsTrigger>
             <TabsTrigger value="monitoring" className="flex items-center gap-2">
               <Eye className="w-4 h-4" />
@@ -401,8 +547,35 @@ export default function AdminDashboard() {
               accounts={accounts}
               onDelete={handleDeleteAccount}
               onUpdateStatus={handleUpdateAccountStatus}
+              onManageCredentials={setSelectedAccountForCredentials}
               loading={loading}
             />
+            
+            {/* Credentials Management Dialog */}
+            <Dialog open={!!selectedAccountForCredentials} onOpenChange={() => setSelectedAccountForCredentials(null)}>
+              <DialogContent className="glass-card max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Manage Account Credentials</DialogTitle>
+                </DialogHeader>
+                {selectedAccountForCredentials && (
+                  <CredentialsManager
+                    accountId={selectedAccountForCredentials.id}
+                    accountUsername={selectedAccountForCredentials.username}
+                  />
+                )}
+              </DialogContent>
+            </Dialog>
+          </TabsContent>
+          
+          <TabsContent value="transactions" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h3 className="text-2xl font-bold">Transaction Management</h3>
+              <Badge variant="secondary" className="bg-primary/10 text-primary">
+                <DollarSign className="w-3 h-3 mr-1" />
+                Real-time Processing
+              </Badge>
+            </div>
+            <TransactionManager />
           </TabsContent>
           
           <TabsContent value="monitoring" className="space-y-6">

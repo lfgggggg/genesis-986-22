@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_credentials: {
+        Row: {
+          account_id: string
+          created_at: string
+          field_name: string
+          field_order: number | null
+          field_value: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          field_name: string
+          field_order?: number | null
+          field_value: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          field_name?: string
+          field_order?: number | null
+          field_value?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_credentials_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketplace_accounts: {
         Row: {
           category: string
@@ -98,6 +136,8 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          metadata: Json | null
+          reference: string | null
           status: string
           type: string
           updated_at: string
@@ -108,6 +148,8 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          metadata?: Json | null
+          reference?: string | null
           status?: string
           type: string
           updated_at?: string
@@ -118,6 +160,8 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          metadata?: Json | null
+          reference?: string | null
           status?: string
           type?: string
           updated_at?: string
@@ -199,6 +243,10 @@ export type Database = {
       generate_unique_ultra_username: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_admin_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
     }
     Enums: {

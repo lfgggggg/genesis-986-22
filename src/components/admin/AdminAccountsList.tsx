@@ -5,13 +5,14 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { MarketplaceAccount } from '@/lib/supabase';
-import { MoreHorizontal, Edit, Trash2, Eye, Users } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Eye, Users, Key } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface AdminAccountsListProps {
   accounts: MarketplaceAccount[];
   onDelete: (id: string) => void;
   onUpdateStatus: (id: string, status: string) => void;
+  onManageCredentials?: (account: MarketplaceAccount) => void;
   loading: boolean;
 }
 
@@ -19,6 +20,7 @@ export const AdminAccountsList: React.FC<AdminAccountsListProps> = ({
   accounts,
   onDelete,
   onUpdateStatus,
+  onManageCredentials,
   loading,
 }) => {
   const getStatusBadge = (status: string) => {
@@ -125,29 +127,35 @@ export const AdminAccountsList: React.FC<AdminAccountsListProps> = ({
                         <Button variant="ghost" size="sm" className="p-1">
                           <MoreHorizontal className="w-4 h-4" />
                         </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="glass-card">
-                        <DropdownMenuItem
-                          onClick={() => onUpdateStatus(account.id, account.status === 'active' ? 'pending' : 'active')}
-                        >
-                          <Eye className="w-4 h-4 mr-2" />
-                          {account.status === 'active' ? 'Set Pending' : 'Set Active'}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => onUpdateStatus(account.id, 'sold')}
-                          disabled={account.status === 'sold'}
-                        >
-                          <Edit className="w-4 h-4 mr-2" />
-                          Mark as Sold
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => onDelete(account.id)}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="glass-card">
+                          {onManageCredentials && (
+                            <DropdownMenuItem onClick={() => onManageCredentials(account)}>
+                              <Key className="w-4 h-4 mr-2" />
+                              Manage Credentials
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem
+                            onClick={() => onUpdateStatus(account.id, account.status === 'active' ? 'pending' : 'active')}
+                          >
+                            <Eye className="w-4 h-4 mr-2" />
+                            {account.status === 'active' ? 'Set Pending' : 'Set Active'}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => onUpdateStatus(account.id, 'sold')}
+                            disabled={account.status === 'sold'}
+                          >
+                            <Edit className="w-4 h-4 mr-2" />
+                            Mark as Sold
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => onDelete(account.id)}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
