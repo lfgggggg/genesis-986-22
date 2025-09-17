@@ -9,13 +9,12 @@ export default function Navigation() {
   const location = useLocation();
   const { user, isAdmin, signOut } = useAuth();
 
-  const navItems = [
-    { name: 'Home', href: '/', icon: Home },
+  const navItems = user ? [
     { name: 'Marketplace', href: '/marketplace', icon: Store },
     { name: 'Wallet', href: '/wallet', icon: Wallet },
     { name: 'Messages', href: '/messages', icon: MessageSquare },
     { name: 'Profile', href: '/profile', icon: User },
-  ];
+  ] : [];
 
   return (
     <nav className="fixed top-0 w-full z-50 glass-card border-b border-border/30">
